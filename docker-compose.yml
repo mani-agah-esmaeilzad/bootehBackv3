@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # سرویس دیتابیس MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD} # این پسورد را از فایل .env.production می‌خواند
+      MYSQL_DATABASE: ${DB_NAME}         # این نام دیتابیس را از فایل .env.production می‌خواند
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  # سرویس اپلیکیشن Next.js
+  next-app:
+    container_name: next-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    command: npm run dev  # <--- این خط طبق درخواست شما برای اجرا در حالت توسعه اضافه شده است
+    volumes:
+      - .:/app # اتصال پوشه فعلی به پوشه /app در کانتینر برای دیدن تغییرات زنده
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - mysql # اطمینان از اینکه دیتابیس قبل از اپلیکیشن اجرا شود
+    networks:
+      - app-network
+    environment:
+      - DB_HOST=mysql # در شبکه داکر، نام سرویس به عنوان هاست شناخته می‌شود
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+
+# تعریف شبکه‌ی ارتباطی بین کانتینرها
+networks:
+  app-network:
+    driver: bridge
+
+# تعریف والیوم برای نگهداری دائمی داده‌های دیتابیس
+volumes:
+  mysql-data:
+    driver: local
